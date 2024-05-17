@@ -8,7 +8,8 @@ import (
 	"github.com/emicklei/proto"
 )
 
-var fileldType = map[string]string{
+// 字段类型映射表
+var fieldTypeMap = map[string]string{
 	"uint32":              "int",
 	"uint64":              "int",
 	"int32":               "int",
@@ -19,9 +20,10 @@ var fileldType = map[string]string{
 	"google.protobuf.Any": "any",
 }
 
+// Proto2schema 将.proto文件转换为schema字符串
 func Proto2schema(path string) string {
 	// 读取.proto文件
-	f, err := os.Open("./test.proto")
+	f, err := os.Open(path)
 	if err != nil {
 		log.Fatal("Error reading file:", err)
 	}
@@ -34,6 +36,7 @@ func Proto2schema(path string) string {
 		log.Fatal("Error parsing proto file:", err)
 	}
 
+	// 构建schema字符串
 	var builder strings.Builder
 	for _, definition := range definitions.Elements {
 		message, ok := definition.(*proto.Message)
@@ -41,48 +44,37 @@ func Proto2schema(path string) string {
 			continue
 		}
 
-		builder.WriteString(`schema `)
+		builder.WriteString("schema ")
 		builder.WriteString(message.Name)
-		builder.WriteString(`:`)
-		builder.WriteString("\n")
+		builder.WriteString(":\n")
+
 		for _, element := range message.Elements {
-			if field, ok := element.(*proto.NormalField); ok {
-				builder.WriteString(" ")
-				builder.WriteString(" ")
-				builder.WriteString(" ")
-				builder.WriteString(" ")
+			switch field := element.(type) {
+			case *proto.NormalField:
+				builder.WriteString("    ")
 				builder.WriteString(field.Name)
 				if field.Optional {
-					builder.WriteString(`?`)
+					builder.WriteString("?")
 				}
+				builder.WriteString(": ")
 
-				builder.WriteString(`: `)
 				if field.Repeated {
-					builder.WriteString(`[`)
+					builder.WriteString("[")
 				}
-
-				builder.WriteString(isDefultFileldType(field.Type))
+				builder.WriteString(getFieldType(field.Type))
 				if field.Repeated {
-					builder.WriteString(`]`)
+					builder.WriteString("]")
 				}
-
 				builder.WriteString("\n")
-				continue
-			}
 
-			if field, ok := element.(*proto.MapField); ok {
-				builder.WriteString(" ")
-				builder.WriteString(" ")
-				builder.WriteString(" ")
-				builder.WriteString(" ")
+			case *proto.MapField:
+				builder.WriteString("    ")
 				builder.WriteString(field.Name)
-				builder.WriteString(`: `)
-				builder.WriteString(`{`)
-				builder.WriteString(isDefultFileldType(field.KeyType))
-				builder.WriteString(`:`)
-				builder.WriteString(isDefultFileldType(field.Type))
-				builder.WriteString(`}`)
-				builder.WriteString("\n")
+				builder.WriteString(": {")
+				builder.WriteString(getFieldType(field.KeyType))
+				builder.WriteString(":")
+				builder.WriteString(getFieldType(field.Type))
+				builder.WriteString("}\n")
 			}
 		}
 
@@ -92,11 +84,10 @@ func Proto2schema(path string) string {
 	return builder.String()
 }
 
-func isDefultFileldType(str string) string {
-	fieldType, ok := fileldType[str]
-	if ok {
-		return fieldType
+// getFieldType 获取字段类型，如果是默认类型则返回映射后的类型，否则原样返回
+func getFieldType(fieldType string) string {
+	if mappedType, ok := fieldTypeMap[fieldType]; ok {
+		return mappedType
 	}
-
-	return str
+	return fieldType
 }
