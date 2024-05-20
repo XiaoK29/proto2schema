@@ -3,12 +3,14 @@ package proto2schema
 import (
 	"log"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/emicklei/proto"
 )
 
 // 字段类型映射表
+
 var fieldTypeMap = map[string]string{
 	"uint32":              "int",
 	"uint64":              "int",
@@ -18,6 +20,9 @@ var fieldTypeMap = map[string]string{
 	"sint64":              "int",
 	"string":              "str",
 	"google.protobuf.Any": "any",
+	"bool":                "bool",
+	"float":               "float",
+	"double":              "float",
 }
 
 // Proto2schema 将.proto文件转换为schema字符串
@@ -28,6 +33,11 @@ func Proto2schema(path string) string {
 		log.Fatal("Error reading file:", err)
 	}
 	defer f.Close()
+
+	lineBreak := "\n"
+	if runtime.GOOS == "windows" {
+		lineBreak = "\r\n"
+	}
 
 	// 解析.proto文件
 	parser := proto.NewParser(f)
@@ -46,7 +56,8 @@ func Proto2schema(path string) string {
 
 		builder.WriteString("schema ")
 		builder.WriteString(message.Name)
-		builder.WriteString(":\n")
+		builder.WriteString(":")
+		builder.WriteString(lineBreak)
 
 		for _, element := range message.Elements {
 			switch field := element.(type) {
@@ -65,7 +76,7 @@ func Proto2schema(path string) string {
 				if field.Repeated {
 					builder.WriteString("]")
 				}
-				builder.WriteString("\n")
+				builder.WriteString(lineBreak)
 
 			case *proto.MapField:
 				builder.WriteString("    ")
@@ -74,11 +85,12 @@ func Proto2schema(path string) string {
 				builder.WriteString(getFieldType(field.KeyType))
 				builder.WriteString(":")
 				builder.WriteString(getFieldType(field.Type))
-				builder.WriteString("}\n")
+				builder.WriteString("}")
+				builder.WriteString(lineBreak)
 			}
 		}
 
-		builder.WriteString("\n")
+		builder.WriteString(lineBreak)
 	}
 
 	return builder.String()
