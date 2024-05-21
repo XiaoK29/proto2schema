@@ -26,6 +26,8 @@ schema employee:
     salary: float
     age_double: float
     is_married: bool
+    gender: "unknown" | "male" | "female"
+    gender_opt?: "unknown" | "male" | "female"
 
 schema Company:
     name: str
